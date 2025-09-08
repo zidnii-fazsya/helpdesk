@@ -52,7 +52,7 @@
                         <i class="bi bi-calendar-date mr-2 text-blue-600"></i>Tanggal
                     </label>
                     <input type="date" id="tanggal" name="tanggal" 
-                        value="{{ old('tanggal', $ticket->tanggal) }}"
+                        value="{{ old('tanggal', $ticket->tanggal->format('Y-m-d')) }}"
                         class="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500">
                 </div>
 
@@ -95,7 +95,7 @@
                         class="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 @error('kategori_id') border-red-500 @enderror">
                         <option value="">-- Pilih Kategori --</option>
                         @foreach($kategoris as $kategori)
-                        <option value="{{ $kategori->id }}" {{ old('kategori_id', $ticket->kategori_id) == $kategori->id ? 'selected' : '' }}>
+                        <option value="{{ $kategori->id }}" {{ old('kategori_id', $kategori_id) == $kategori->id ? 'selected' : '' }}>
                             {{ $kategori->nama_kategori }}
                         </option>
                         @endforeach
@@ -113,20 +113,14 @@
                         required>
                 </div>
 
-                {{-- Aplikasi --}}
+                {{-- Subkategori / Aplikasi --}}
                 <div>
-                    <label for="aplikasi_id" class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="bi bi-app-indicator mr-2 text-blue-600"></i>Pilih Aplikasi Tujuan
+                    <label for="subkategori_id" class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="bi bi-diagram-3 mr-2 text-blue-600"></i>Subkategori / Aplikasi
                     </label>
-                    <select name="aplikasi_id" id="aplikasi_id"
-                        class="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500">
-                        <option value="">-- Pilih Aplikasi --</option>
-                        @foreach($aplikasis as $app)
-                        <option value="{{ $app->id }}" 
-                            {{ old('aplikasi_id', $ticket->aplikasi_id) == $app->id ? 'selected' : '' }}>
-                            {{ $app->nama_aplikasi }}
-                        </option>
-                        @endforeach
+                    <select name="subkategori_id[]" id="subkategori_id" multiple
+                        class="w-full border rounded-lg px-4 py-3 @error('subkategori_id') border-red-500 @enderror">
+                        <option value="">-- Pilih Subkategori / Aplikasi --</option>
                     </select>
                 </div>
 
@@ -208,4 +202,51 @@
     </div>
 </div>
 
+@push('scripts')
+<script>
+    const kategoris = @json($kategoris);
+    const aplikasis = @json($aplikasis);
+    const kategoriSelect = document.getElementById('kategori_id');
+    const subkategoriSelect = document.getElementById('subkategori_id');
+    const selectedSubkategoris = @json(old('subkategori_id', $ticket->subkategoris->pluck('id')->toArray()));
+    const selectedAplikasi = @json(old('aplikasi_id', $ticket->aplikasi_id));
+
+    function populateSubkategori() {
+        const selectedId = kategoriSelect.value;
+        const selectedKategori = kategoris.find(k => k.id == selectedId);
+        subkategoriSelect.innerHTML = '<option value="">-- Pilih Subkategori / Aplikasi --</option>';
+
+        if (selectedKategori) {
+            if (selectedKategori.nama_kategori === 'Perangkat Lunak') {
+                aplikasis.forEach(app => {
+                    const option = document.createElement('option');
+                    option.value = app.id;
+                    option.textContent = app.nama_aplikasi;
+                    if (selectedAplikasi == app.id) {
+                        option.selected = true;
+                    }
+                    subkategoriSelect.appendChild(option);
+                });
+            } else {
+                if (selectedKategori.subkategoris.length > 0) {
+                    selectedKategori.subkategoris.forEach(sub => {
+                        const option = document.createElement('option');
+                        option.value = sub.id;
+                        option.textContent = sub.nama_subkategori;
+                        if (selectedSubkategoris.includes(sub.id)) {
+                            option.selected = true;
+                        }
+                        subkategoriSelect.appendChild(option);
+                    });
+                }
+            }
+        }
+    }
+
+    kategoriSelect.addEventListener('change', populateSubkategori);
+
+    // Initial population
+    document.addEventListener('DOMContentLoaded', populateSubkategori);
+</script>
+@endpush
 @endsection

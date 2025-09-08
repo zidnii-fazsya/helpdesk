@@ -46,6 +46,16 @@
                     <td>{{ $ticket->aplikasi->nama_aplikasi ?? '-' }}</td>
                 </tr>
                 <tr>
+                    <th>Subkategori</th>
+                    <td>
+                        @if($ticket->subkategoris && $ticket->subkategoris->count() > 0)
+                            {{ $ticket->subkategoris->pluck('nama_subkategori')->join(', ') }}
+                        @else
+                            -
+                        @endif
+                    </td>
+                </tr>
+                <tr>
                     <th>Status</th>
                     <td>
                         <span class="badge bg-{{ strtolower($ticket->status) === 'selesai' ? 'success' : (strtolower($ticket->status) === 'proses' ? 'warning' : 'secondary') }}">

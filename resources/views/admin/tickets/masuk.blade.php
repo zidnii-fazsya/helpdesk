@@ -71,7 +71,11 @@
                         @if($ticket->kategori === 'Perangkat Lunak')
                             {{ $ticket->aplikasi->nama_aplikasi ?? '-' }}
                         @else
-                            {{ $ticket->subkategoris->first()->nama_subkategori ?? '-' }}
+                            @if($ticket->subkategoris && $ticket->subkategoris->count() > 0)
+                                {{ $ticket->subkategoris->pluck('nama_subkategori')->join(', ') }}
+                            @else
+                                -
+                            @endif
                         @endif
                     </td>
                     <td class="px-4 py-3 text-center">

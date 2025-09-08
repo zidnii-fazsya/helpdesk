@@ -37,7 +37,7 @@ class TicketController extends Controller
             'satuan_kerja'         => ['required', 'string', 'max:255'],
             'kategori_id'          => ['required', 'integer', 'exists:kategoris,id'],
             'subkategori_id'       => ['nullable', 'array'],
-            'subkategori_id.*'     => ['integer', 'exists:sub_kategoris,id'],
+            'subkategori_id.*'     => ['integer'], // Allow both subkategori and aplikasi IDs
             'keluhan'              => ['required', 'string'],
             'prioritas'            => ['required', 'in:tinggi,sedang,rendah'],
             'waktu_respon'         => ['nullable', 'integer', 'min:0'],
@@ -50,7 +50,17 @@ class TicketController extends Controller
         $ticketNumber = 'TKT-' . now()->format('YmdHis');
 
         // Ambil nama kategori utama
-        $kategoriUtama = Kategori::find($request->kategori_id)?->nama_kategori ?? '-';
+        $kategori = Kategori::find($request->kategori_id);
+        $kategoriUtama = $kategori ? $kategori->nama_kategori : '-';
+
+        $aplikasiId = null;
+        $subkategoriIds = [];
+
+        if ($kategoriUtama === 'Perangkat Lunak') {
+            $aplikasiId = $request->subkategori_id[0] ?? null;
+        } else {
+            $subkategoriIds = $request->subkategori_id ?? [];
+        }
 
         // Simpan tiket
         $ticket = Ticket::create([
@@ -68,15 +78,15 @@ class TicketController extends Controller
             'sla'                  => $request->sla,
             'eskalasi'             => $request->eskalasi,
             'keterangan_prioritas' => $request->keterangan_prioritas,
-            'aplikasi_id'          => null,
+            'aplikasi_id'          => $aplikasiId,
         ]);
 
         // Sinkronisasi kategori (jika ada relasi many-to-many)
         $ticket->kategoriTickets()->sync([$request->kategori_id]);
 
         // Sinkronisasi subkategori
-        if (!empty($request->subkategori_id)) {
-            $ticket->subkategoris()->sync($request->subkategori_id);
+        if (!empty($subkategoriIds)) {
+            $ticket->subkategoris()->sync($subkategoriIds);
         }
 
         return redirect()
@@ -91,8 +101,9 @@ class TicketController extends Controller
         $kategoris     = Kategori::with('subkategoris')->orderBy('nama_kategori')->get();
         $aplikasis     = Aplikasi::orderBy('nama_aplikasi')->get();
         $prioritasList = ['tinggi', 'sedang', 'rendah'];
+        $kategori_id = $ticket->kategoriTickets->first()->id;
 
-        return view('admin.tickets.edit', compact('ticket', 'kategoris', 'aplikasis', 'prioritasList'));
+        return view('admin.tickets.edit', compact('ticket', 'kategoris', 'aplikasis', 'prioritasList', 'kategori_id'));
     }
 
     /** ================= UPDATE ================= */
@@ -113,7 +124,7 @@ class TicketController extends Controller
             'satuan_kerja'         => ['required', 'string', 'max:255'],
             'kategori_id'          => ['required', 'integer', 'exists:kategoris,id'],
             'subkategori_id'       => ['nullable', 'array'],
-            'subkategori_id.*'     => ['integer', 'exists:sub_kategoris,id'],
+            'subkategori_id.*'     => ['integer'], // Allow both subkategori and aplikasi IDs
             'keluhan'              => ['required', 'string'],
             'prioritas'            => ['required', 'in:tinggi,sedang,rendah'],
             'waktu_respon'         => ['nullable', 'integer', 'min:0'],
@@ -122,7 +133,17 @@ class TicketController extends Controller
             'keterangan_prioritas' => ['nullable', 'string'],
         ]);
 
-        $kategoriUtama = Kategori::find($request->kategori_id)?->nama_kategori ?? '-';
+        $kategori = Kategori::find($request->kategori_id);
+        $kategoriUtama = $kategori ? $kategori->nama_kategori : '-';
+
+        $aplikasiId = null;
+        $subkategoriIds = [];
+
+        if ($kategoriUtama === 'Perangkat Lunak') {
+            $aplikasiId = $request->subkategori_id[0] ?? null;
+        } else {
+            $subkategoriIds = $request->subkategori_id ?? [];
+        }
 
         $ticket->update([
             'tanggal'              => $request->tanggal,
@@ -137,13 +158,17 @@ class TicketController extends Controller
             'sla'                  => $request->sla,
             'eskalasi'             => $request->eskalasi,
             'keterangan_prioritas' => $request->keterangan_prioritas,
-            'aplikasi_id'          => null,
+            'aplikasi_id'          => $aplikasiId,
         ]);
 
         $ticket->kategoriTickets()->sync([$request->kategori_id]);
 
-        if (!empty($request->subkategori_id)) {
-            $ticket->subkategoris()->sync($request->subkategori_id);
+        if ($kategoriUtama === 'Perangkat Lunak') {
+            $ticket->subkategoris()->sync([]);
+        } else {
+            if (!empty($subkategoriIds)) {
+                $ticket->subkategoris()->sync($subkategoriIds);
+            }
         }
 
         return redirect()

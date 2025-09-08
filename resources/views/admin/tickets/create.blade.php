@@ -109,7 +109,7 @@
                     <label for="subkategori_id" class="block text-sm font-semibold text-gray-700 mb-2">
                         <i class="bi bi-diagram-3 mr-2 text-blue-600"></i>Subkategori / Aplikasi
                     </label>
-                    <select name="subkategori_id" id="subkategori_id" required
+                    <select name="subkategori_id[]" id="subkategori_id" multiple
                         class="w-full border rounded-lg px-4 py-3 @error('subkategori_id') border-red-500 @enderror">
                         <option value="">-- Pilih Subkategori / Aplikasi --</option>
                     </select>
@@ -209,23 +209,33 @@
 
 {{-- JavaScript: Filter Subkategori tanpa AJAX --}}
 <script>
-    const kategoris = @json($kategoris); // Ambil data kategori + subkategori dari controller
+    const kategoris = @json($kategoris);
+    const aplikasis = @json($aplikasis);
     const kategoriSelect = document.getElementById('kategori_id');
     const subkategoriSelect = document.getElementById('subkategori_id');
 
     kategoriSelect.addEventListener('change', function () {
         const selectedId = this.value;
+        const selectedKategori = kategoris.find(k => k.id == selectedId);
         subkategoriSelect.innerHTML = '<option value="">-- Pilih Subkategori / Aplikasi --</option>';
 
-        if (selectedId) {
-            const kategori = kategoris.find(k => k.id == selectedId);
-            if (kategori && kategori.subkategoris.length > 0) {
-                kategori.subkategoris.forEach(sub => {
+        if (selectedKategori) {
+            if (selectedKategori.nama_kategori === 'Perangkat Lunak') {
+                aplikasis.forEach(app => {
                     const option = document.createElement('option');
-                    option.value = sub.id;
-                    option.textContent = sub.nama_subkategori;
+                    option.value = app.id;
+                    option.textContent = app.nama_aplikasi;
                     subkategoriSelect.appendChild(option);
                 });
+            } else {
+                if (selectedKategori.subkategoris.length > 0) {
+                    selectedKategori.subkategoris.forEach(sub => {
+                        const option = document.createElement('option');
+                        option.value = sub.id;
+                        option.textContent = sub.nama_subkategori;
+                        subkategoriSelect.appendChild(option);
+                    });
+                }
             }
         }
     });
