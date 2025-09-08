@@ -26,6 +26,25 @@ class TicketController extends Controller
         return view('admin.tickets.create', compact('kategoris', 'aplikasis', 'prioritasList'));
     }
 
+    /** ================= GET OPTIONS ================= */
+    public function getOptions(Request $request)
+    {
+        $kategoriId = $request->input('kategori_id');
+        $kategori = Kategori::with('subkategoris')->find($kategoriId);
+
+        if (!$kategori) {
+            return response()->json(['error' => 'Kategori tidak ditemukan'], 404);
+        }
+
+        if ($kategori->nama_kategori === 'Perangkat Lunak') {
+            $options = Aplikasi::orderBy('nama_aplikasi')->get();
+        } else {
+            $options = $kategori->subkategoris()->orderBy('nama_subkategori')->get();
+        }
+
+        return response()->json($options);
+    }
+
     /** ================= STORE ================= */
     public function store(Request $request): RedirectResponse
     {
@@ -36,8 +55,7 @@ class TicketController extends Controller
             'ruangan'              => ['required', 'string', 'max:255'],
             'satuan_kerja'         => ['required', 'string', 'max:255'],
             'kategori_id'          => ['required', 'integer', 'exists:kategoris,id'],
-            'subkategori_id'       => ['nullable', 'array'],
-            'subkategori_id.*'     => ['integer'], // Allow both subkategori and aplikasi IDs
+            'subkategori_id'       => ['nullable', 'integer'], // Allow both subkategori and aplikasi IDs
             'keluhan'              => ['required', 'string'],
             'prioritas'            => ['required', 'in:tinggi,sedang,rendah'],
             'waktu_respon'         => ['nullable', 'integer', 'min:0'],
@@ -57,9 +75,9 @@ class TicketController extends Controller
         $subkategoriIds = [];
 
         if ($kategoriUtama === 'Perangkat Lunak') {
-            $aplikasiId = $request->subkategori_id[0] ?? null;
+            $aplikasiId = $request->subkategori_id;
         } else {
-            $subkategoriIds = $request->subkategori_id ?? [];
+            $subkategoriIds = [$request->subkategori_id];
         }
 
         // Simpan tiket
@@ -102,8 +120,10 @@ class TicketController extends Controller
         $aplikasis     = Aplikasi::orderBy('nama_aplikasi')->get();
         $prioritasList = ['tinggi', 'sedang', 'rendah'];
         $kategori_id = $ticket->kategoriTickets->first()->id;
+        $subkategori_id = $ticket->subkategoris->first()->id ?? null;
+        $aplikasi_id = $ticket->aplikasi_id ?? null;
 
-        return view('admin.tickets.edit', compact('ticket', 'kategoris', 'aplikasis', 'prioritasList', 'kategori_id'));
+        return view('admin.tickets.edit', compact('ticket', 'kategoris', 'aplikasis', 'prioritasList', 'kategori_id', 'subkategori_id', 'aplikasi_id'));
     }
 
     /** ================= UPDATE ================= */
@@ -123,8 +143,7 @@ class TicketController extends Controller
             'ruangan'              => ['required', 'string', 'max:255'],
             'satuan_kerja'         => ['required', 'string', 'max:255'],
             'kategori_id'          => ['required', 'integer', 'exists:kategoris,id'],
-            'subkategori_id'       => ['nullable', 'array'],
-            'subkategori_id.*'     => ['integer'], // Allow both subkategori and aplikasi IDs
+            'subkategori_id'       => ['nullable', 'integer'], // Allow both subkategori and aplikasi IDs
             'keluhan'              => ['required', 'string'],
             'prioritas'            => ['required', 'in:tinggi,sedang,rendah'],
             'waktu_respon'         => ['nullable', 'integer', 'min:0'],
@@ -140,9 +159,9 @@ class TicketController extends Controller
         $subkategoriIds = [];
 
         if ($kategoriUtama === 'Perangkat Lunak') {
-            $aplikasiId = $request->subkategori_id[0] ?? null;
+            $aplikasiId = $request->subkategori_id;
         } else {
-            $subkategoriIds = $request->subkategori_id ?? [];
+            $subkategoriIds = [$request->subkategori_id];
         }
 
         $ticket->update([

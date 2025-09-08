@@ -118,7 +118,7 @@
                     <label for="subkategori_id" class="block text-sm font-semibold text-gray-700 mb-2">
                         <i class="bi bi-diagram-3 mr-2 text-blue-600"></i>Subkategori / Aplikasi
                     </label>
-                    <select name="subkategori_id[]" id="subkategori_id" multiple
+                    <select name="subkategori_id" id="subkategori_id"
                         class="w-full border rounded-lg px-4 py-3 @error('subkategori_id') border-red-500 @enderror">
                         <option value="">-- Pilih Subkategori / Aplikasi --</option>
                     </select>
@@ -202,51 +202,58 @@
     </div>
 </div>
 
-@push('scripts')
 <script>
-    const kategoris = @json($kategoris);
-    const aplikasis = @json($aplikasis);
-    const kategoriSelect = document.getElementById('kategori_id');
-    const subkategoriSelect = document.getElementById('subkategori_id');
-    const selectedSubkategoris = @json(old('subkategori_id', $ticket->subkategoris->pluck('id')->toArray()));
-    const selectedAplikasi = @json(old('aplikasi_id', $ticket->aplikasi_id));
+    document.addEventListener('DOMContentLoaded', function () {
+        const kategoriSelect = document.getElementById('kategori_id');
+        const subkategoriSelect = document.getElementById('subkategori_id');
+        const getOptionsUrl = "{{ route('admin.get-options') }}";
+        const selectedSubkategori = "{{ old('subkategori_id', $ticket->subkategori_id) }}";
+        const selectedAplikasi = "{{ old('aplikasi_id', $ticket->aplikasi_id) }}";
 
-    function populateSubkategori() {
-        const selectedId = kategoriSelect.value;
-        const selectedKategori = kategoris.find(k => k.id == selectedId);
-        subkategoriSelect.innerHTML = '<option value="">-- Pilih Subkategori / Aplikasi --</option>';
+        function updateSubkategoriOptions() {
+            const selectedId = kategoriSelect.value;
+            subkategoriSelect.innerHTML = '<option value="">-- Memuat... --</option>';
 
-        if (selectedKategori) {
-            if (selectedKategori.nama_kategori === 'Perangkat Lunak') {
-                aplikasis.forEach(app => {
-                    const option = document.createElement('option');
-                    option.value = app.id;
-                    option.textContent = app.nama_aplikasi;
-                    if (selectedAplikasi == app.id) {
-                        option.selected = true;
-                    }
-                    subkategoriSelect.appendChild(option);
-                });
-            } else {
-                if (selectedKategori.subkategoris.length > 0) {
-                    selectedKategori.subkategoris.forEach(sub => {
-                        const option = document.createElement('option');
-                        option.value = sub.id;
-                        option.textContent = sub.nama_subkategori;
-                        if (selectedSubkategoris.includes(sub.id)) {
-                            option.selected = true;
-                        }
-                        subkategoriSelect.appendChild(option);
-                    });
-                }
+            if (!selectedId) {
+                subkategoriSelect.innerHTML = '<option value="">-- Pilih Subkategori / Aplikasi --</option>';
+                return;
             }
+
+            fetch(`${getOptionsUrl}?kategori_id=${selectedId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(options => {
+                    subkategoriSelect.innerHTML = '<option value="">-- Pilih Subkategori / Aplikasi --</option>';
+                    if (options.length > 0) {
+                        options.forEach(option => {
+                            const optionElement = document.createElement('option');
+                            optionElement.value = option.id;
+                            optionElement.textContent = option.nama_subkategori || option.nama_aplikasi;
+                            if (option.id == selectedSubkategori || option.id == selectedAplikasi) {
+                                optionElement.selected = true;
+                            }
+                            subkategoriSelect.appendChild(optionElement);
+                        });
+                    } else {
+                        subkategoriSelect.innerHTML = '<option value="">-- Tidak ada pilihan --</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching options:', error);
+                    subkategoriSelect.innerHTML = '<option value="">-- Gagal memuat --</option>';
+                });
         }
-    }
 
-    kategoriSelect.addEventListener('change', populateSubkategori);
+        kategoriSelect.addEventListener('change', updateSubkategoriOptions);
 
-    // Initial population
-    document.addEventListener('DOMContentLoaded', populateSubkategori);
+        // Initial population
+        if (kategoriSelect.value) {
+            updateSubkategoriOptions();
+        }
+    });
 </script>
-@endpush
 @endsection
